@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        canvas {
+            border: 1px solid #000;
+        }
+
+        #info {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<canvas id="myCanvas" width="400" height="400"></canvas>
+<div id="info"></div>
+
+<script>
+    var canvas = document.getElementById('myCanvas');
+    var ctx = canvas.getContext('2d');
+
+    var drawing = false;
+    var lines = [];
+    var intersectionPoint = null;
+    var lineCount = 0;
+
+    var infoElement = document.getElementById('info');
+
+    canvas.addEventListener('mousedown', function(event) {
+        if (lineCount >= 3) {
+            // If three lines have been drawn, clear the canvas and reset
+            clearCanvas();
+        }
+        drawing = true;
+        var x = event.clientX - canvas.getBoundingClientRect().left;
+        var y = event.clientY - canvas.getBoundingClientRect().top;
+        lines.push({ x1: x, y1: y, x2: x, y2: y }); // Start a new line
+        intersectionPoint = null; // Reset intersection point when starting a new line
+    });
+
+    // Event listener for mouse move
+    canvas.addEventListener('mousemove', function(event) {
+        if (!drawing) return;
+        var x = event.clientX - canvas.getBoundingClientRect().left;
+        var y = event.clientY - canvas.getBoundingClientRect().top;
+        lines[lines.length - 1].x2 = x;
+        lines[lines.length - 1].y2 = y;
+        redraw();
+    });
+
+    // Event listener for mouse up
+    canvas.addEventListener('mouseup', function() {
+        drawing = false;
+        lineCount = lines.length;
+        checkIntersections();
+    });
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        lines = [];
+        lineCount = 0;
+        infoElement.innerText = '';
+    }
+
+    function redraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+        lines.forEach(function(line) {
+            ctx.beginPath();
+            ctx.moveTo(line.x1, line.y1);
+            ctx.lineTo(line.x2, line.y2);
+            ctx.stroke();
+        });
+
+        if (intersectionPoint) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(intersectionPoint.x - 5, intersectionPoint.y - 5, 10, 10);
+        }
+    }
+
+    function checkIntersections() {
+        if (lines.length >= 2) {
+            var newLine = lines[lines.length - 1];
+            for (var i = 0; i < lines.length - 1; i++) {
+                var existingLine = lines[i];
+                if (doLinesIntersect(newLine.x1, newLine.y1, newLine.x2, newLine.y2, existingLine.x1, existingLine.y1, existingLine.x2, existingLine.y2)) {
+                    intersectionPoint = calculateIntersectionPoint(newLine, existingLine);
+                    updateInformation(newLine, existingLine, intersectionPoint);
+                    redraw();
+                    return;
+                }
+            }
+            infoElement.innerText = 'No intersection.';
+        }
+    }
+
+    // Function to check if two lines intersect
+    //https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
+    function doLinesIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+        // Calculate the direction vectors of the two lines
+        var dx1 = x2 - x1;
+        var dy1 = y2 - y1;
+        var dx2 = x4 - x3;
+        var dy2 = y4 - y3;
+
+        // Calculate the determinant
+        var det = dx1 * dy2 - dx2 * dy1;
+
+        // Check if the lines are parallel (det == 0)
+        if (det === 0) {
+            return false;
+        } else {
+            // Calculate the parameters for the intersection point
+            var t1 = ((x3 - x1) * dy2 - (y3 - y1) * dx2) / det;
+            var t2 = ((x3 - x1) * dy1 - (y3 - y1) * dx1) / det;
+
+            // Check if the intersection point is within the line segments
+            if (t1 >= 0 && t1 <= 1 && t2 >= 0 && t2 <= 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Function to calculate the intersection point
+    function calculateIntersectionPoint(line1, line2) {
+        var x1 = line1.x1;
+        var y1 = line1.y1;
+        var x2 = line1.x2;
+        var y2 = line1.y2;
+        var x3 = line2.x1;
+        var y3 = line2.y1;
+        var x4 = line2.x2;
+        var y4 = line2.y2;
+
+        // Calculate the intersection point
+        var det = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        var x = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / det;
+        var y = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / det;
+
+        return { x: x, y: y };
+    }
+
+    // Function to update the information element
+    function updateInformation(line1, line2, intersectionPoint) {
+        infoElement.innerText =
+            'Intersection Point: (' + intersectionPoint.x + ', ' + intersectionPoint.y + ')\n' +
+            'Line 1 Endpoints: (' + line1.x1 + ', ' + line1.y1 + '), (' + line1.x2 + ', ' + line1.y2 + ')\n' +
+            'Line 2 Endpoints: (' + line2.x1 + ', ' + line2.y1 + '), (' + line2.x2 + ', ' + line2.y2 + ')';
+    }
+</script>
+</body>
+</html>
